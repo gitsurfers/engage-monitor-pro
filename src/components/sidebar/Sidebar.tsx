@@ -1,11 +1,12 @@
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Hash, User, Settings } from 'lucide-react';
+import { ChevronDown, ChevronRight, Hash, User, Settings, LogOut } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { KeywordMonitor } from '@/components/keywords/KeywordMonitor';
 import { UserMonitor } from '@/components/users/UserMonitor';
 import { EngagementSettings } from '@/components/engagement/EngagementSettings';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { MonitorSettings } from '@/hooks/useMonitor';
 
 interface SidebarProps {
@@ -17,6 +18,7 @@ interface SidebarProps {
   onUpdateAutoEngagement: (settings: Partial<MonitorSettings['autoEngagement']>) => void;
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
+  profile: any; // Twitter profile data
 }
 
 export function Sidebar({
@@ -27,12 +29,18 @@ export function Sidebar({
   onRemoveUserId,
   onUpdateAutoEngagement,
   isSidebarOpen,
-  toggleSidebar
+  toggleSidebar,
+  profile
 }: SidebarProps) {
   const [openSection, setOpenSection] = useState<string | null>(null);
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
+  };
+
+  const handleLogout = () => {
+    // Redirect to backend's logout endpoint
+    window.location.href = 'http://localhost:3000/auth/logout';
   };
 
   if (!isSidebarOpen) {
@@ -76,6 +84,22 @@ export function Sidebar({
           <ChevronLeft className="h-5 w-5" />
         </Button>
       </div>
+
+      {/* User Profile */}
+      {profile && (
+        <div className="p-4 border-b border-sidebar-border">
+          <div className="flex items-center space-x-3">
+            <Avatar className="h-10 w-10 border">
+              <AvatarImage src={profile.photos?.[0]?.value || ''} alt={profile.displayName} />
+              <AvatarFallback>{profile.displayName?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="space-y-1">
+              <p className="text-sm font-medium line-clamp-1">{profile.displayName}</p>
+              <p className="text-xs text-muted-foreground">@{profile.username}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-4">
@@ -168,7 +192,15 @@ export function Sidebar({
       </div>
 
       <div className="p-4 border-t border-sidebar-border">
-        <p className="text-xs text-muted-foreground text-center">
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start text-muted-foreground hover:text-foreground"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          <span>Logout</span>
+        </Button>
+        <p className="text-xs text-muted-foreground text-center mt-4">
           Social Media Monitor v1.0
         </p>
       </div>
