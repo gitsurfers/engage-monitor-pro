@@ -74,7 +74,7 @@ const Index = () => {
             comments: 0,
             shares: 0,
             isLiked: false,
-            type: 'post',
+            type: 'post' as const,  // This explicitly sets the type to a literal type
             matchedKeyword: findMatchedKeyword(tweet.data.text, settings.keywords)
           };
           
