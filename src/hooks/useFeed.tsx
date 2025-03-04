@@ -78,7 +78,7 @@ const samplePosts: Post[] = [
     username: 'sundarpichai',
     userDisplayName: 'Sundar Pichai',
     userAvatar: 'https://pbs.twimg.com/profile_images/864282616597405701/M-FEJMZ0_400x400.jpg',
-    content: 'Introducing the next generation of search with an entirely new experience within Google Search. It's a more personal, natural, and conversational way to get help.',
+    content: "Introducing the next generation of search with an entirely new experience within Google Search. It's a more personal, natural, and conversational way to get help.",
     timestamp: new Date(Date.now() - 1000 * 60 * 180), // 3 hours ago
     likes: 6789,
     comments: 1234,
