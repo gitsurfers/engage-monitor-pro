@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Loader2 } from 'lucide-react';
 import type { Keyword } from '@/hooks/useMonitor';
 
 interface KeywordMonitorProps {
@@ -14,11 +14,29 @@ interface KeywordMonitorProps {
 
 export function KeywordMonitor({ keywords, onAddKeyword, onRemoveKeyword }: KeywordMonitorProps) {
   const [newKeyword, setNewKeyword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRemoving, setIsRemoving] = useState<string | null>(null);
 
-  const handleAddKeyword = () => {
-    if (newKeyword.trim()) {
-      onAddKeyword(newKeyword.trim());
-      setNewKeyword('');
+  const handleAddKeyword = async () => {
+    if (newKeyword.trim() && !isSubmitting) {
+      setIsSubmitting(true);
+      try {
+        await onAddKeyword(newKeyword.trim());
+        setNewKeyword('');
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const handleRemoveKeyword = async (id: string) => {
+    if (isRemoving) return;
+    
+    setIsRemoving(id);
+    try {
+      await onRemoveKeyword(id);
+    } finally {
+      setIsRemoving(null);
     }
   };
 
@@ -37,9 +55,18 @@ export function KeywordMonitor({ keywords, onAddKeyword, onRemoveKeyword }: Keyw
           onChange={(e) => setNewKeyword(e.target.value)}
           onKeyDown={handleKeyPress}
           className="flex-1"
+          disabled={isSubmitting}
         />
-        <Button onClick={handleAddKeyword} size="icon">
-          <Plus className="h-4 w-4" />
+        <Button 
+          onClick={handleAddKeyword} 
+          size="icon"
+          disabled={isSubmitting || !newKeyword.trim()}
+        >
+          {isSubmitting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
         </Button>
       </div>
       
@@ -60,10 +87,15 @@ export function KeywordMonitor({ keywords, onAddKeyword, onRemoveKeyword }: Keyw
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => onRemoveKeyword(keyword.id)}
+                    onClick={() => handleRemoveKeyword(keyword.id)}
                     className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7"
+                    disabled={isRemoving === keyword.id}
                   >
-                    <X className="h-3.5 w-3.5" />
+                    {isRemoving === keyword.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <X className="h-3.5 w-3.5" />
+                    )}
                   </Button>
                 </div>
               ))}

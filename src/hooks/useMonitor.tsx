@@ -1,5 +1,4 @@
-
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 
 export type Keyword = {
@@ -34,8 +33,43 @@ export function useMonitor() {
       selectedAccounts: [],
     },
   });
+  
+  useEffect(() => {
+    const fetchKeywords = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/twitter/get-queries', {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch keywords');
+        }
+        
+        const data = await response.json();
+        
+        const keywords = data.queries.map((item: { query: string }) => ({
+          id: crypto.randomUUID(),
+          text: item.query
+        }));
+        
+        setSettings(prev => ({
+          ...prev,
+          keywords
+        }));
+      } catch (error) {
+        console.error('Error fetching keywords:', error);
+        toast({
+          title: "Failed to load keywords",
+          description: "Could not retrieve your saved keywords.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    fetchKeywords();
+  }, []);
 
-  const addKeyword = useCallback((text: string) => {
+  const addKeyword = useCallback(async (text: string) => {
     if (!text.trim()) return;
     
     const exists = settings.keywords.some(k => k.text.toLowerCase() === text.toLowerCase());
@@ -47,28 +81,78 @@ export function useMonitor() {
       return;
     }
 
-    setSettings(prev => ({
-      ...prev,
-      keywords: [...prev.keywords, { id: crypto.randomUUID(), text }],
-    }));
-    
-    toast({
-      title: "Keyword added",
-      description: `Now monitoring for "${text}".`,
-    });
+    try {
+      const response = await fetch('http://localhost:3000/twitter/add-query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ query: text })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to add keyword');
+      }
+      
+      setSettings(prev => ({
+        ...prev,
+        keywords: [...prev.keywords, { id: crypto.randomUUID(), text }],
+      }));
+      
+      toast({
+        title: "Keyword added",
+        description: `Now monitoring for "${text}".`,
+      });
+    } catch (error) {
+      console.error('Error adding keyword:', error);
+      toast({
+        title: "Failed to add keyword",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+    }
   }, [settings.keywords]);
 
-  const removeKeyword = useCallback((id: string) => {
-    setSettings(prev => ({
-      ...prev,
-      keywords: prev.keywords.filter(k => k.id !== id),
-    }));
+  const removeKeyword = useCallback(async (id: string) => {
+    const keywordToRemove = settings.keywords.find(k => k.id === id);
     
-    toast({
-      title: "Keyword removed",
-      description: "Monitoring settings updated.",
-    });
-  }, []);
+    if (!keywordToRemove) {
+      return;
+    }
+    
+    try {
+      const response = await fetch('http://localhost:3000/twitter/remove-query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ query: keywordToRemove.text })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to remove keyword');
+      }
+      
+      setSettings(prev => ({
+        ...prev,
+        keywords: prev.keywords.filter(k => k.id !== id),
+      }));
+      
+      toast({
+        title: "Keyword removed",
+        description: "Monitoring settings updated.",
+      });
+    } catch (error) {
+      console.error('Error removing keyword:', error);
+      toast({
+        title: "Failed to remove keyword",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+    }
+  }, [settings.keywords]);
 
   const addUserId = useCallback((username: string) => {
     if (!username.trim()) return;

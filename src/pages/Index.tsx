@@ -7,7 +7,7 @@ import { useMonitor } from '@/hooks/useMonitor';
 import { useFeed } from '@/hooks/useFeed';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from '@/components/ui/use-toast';
-import io from 'socket.io-client';
+import io, { Socket } from 'socket.io-client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -48,51 +48,53 @@ const Index = () => {
 
   // Establish Socket.io connection once profile is loaded
   useEffect(() => {
-    if (profile) {
-      const socket = io('http://localhost:3000', { withCredentials: true });
-      
-      socket.on('connect', () => {
-        toast({
-          title: "Connected to stream",
-          description: "You'll now receive real-time Twitter updates",
-        });
+    if (!profile) return;
+    
+    const socket: Socket = io('http://localhost:3000', { withCredentials: true });
+    
+    socket.on('connect', () => {
+      toast({
+        title: "Connected to stream",
+        description: "You'll now receive real-time Twitter updates",
       });
+    });
+    
+    socket.on('tweet', (tweet) => {
+      setTweets((prev) => [tweet, ...prev]);
       
-      socket.on('tweet', (tweet) => {
-        setTweets((prev) => [tweet, ...prev]);
+      // Convert Twitter API tweet to our app's post format
+      if (tweet.data?.text) {
+        const newPost = {
+          id: tweet.data.id || crypto.randomUUID(),
+          username: profile.username,
+          userDisplayName: profile.displayName,
+          userAvatar: profile.photos?.[0]?.value || '',
+          content: tweet.data.text,
+          timestamp: new Date(tweet.data.created_at || Date.now()),
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          isLiked: false,
+          type: 'post' as const,  // This explicitly sets the type to a literal type
+          matchedKeyword: findMatchedKeyword(tweet.data.text, settings.keywords)
+        };
         
-        // Convert Twitter API tweet to our app's post format
-        if (tweet.data?.text) {
-          const newPost = {
-            id: tweet.data.id || crypto.randomUUID(),
-            username: profile.username,
-            userDisplayName: profile.displayName,
-            userAvatar: profile.photos?.[0]?.value || '',
-            content: tweet.data.text,
-            timestamp: new Date(tweet.data.created_at || Date.now()),
-            likes: 0,
-            comments: 0,
-            shares: 0,
-            isLiked: false,
-            type: 'post' as const,  // This explicitly sets the type to a literal type
-            matchedKeyword: findMatchedKeyword(tweet.data.text, settings.keywords)
-          };
-          
-          addNewPost(newPost);
-        }
+        addNewPost(newPost);
+      }
+    });
+    
+    socket.on('disconnect', () => {
+      toast({
+        title: "Disconnected from stream",
+        description: "Connection to Twitter stream was lost",
+        variant: "destructive"
       });
-      
-      socket.on('disconnect', () => {
-        toast({
-          title: "Disconnected from stream",
-          description: "Connection to Twitter stream was lost",
-          variant: "destructive"
-        });
-      });
-      
-      return () => socket.disconnect();
-    }
-  }, [profile, settings.keywords]);
+    });
+    
+    return () => {
+      socket.disconnect();
+    };
+  }, [profile, settings.keywords, addNewPost]);
 
   // Helper function to check if a tweet matches any monitored keywords
   const findMatchedKeyword = (text, keywords) => {
