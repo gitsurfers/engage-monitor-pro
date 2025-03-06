@@ -26,7 +26,9 @@ export type MonitorSettings = {
 // Helper functions for session storage
 const saveKeywordsToSession = (keywords: Keyword[]) => {
   try {
-    sessionStorage.setItem('monitor_keywords', JSON.stringify(keywords));
+    // Store just the array of strings
+    const keywordStrings = keywords.map(k => k.text);
+    sessionStorage.setItem('monitor_keywords', JSON.stringify(keywordStrings));
   } catch (error) {
     console.error('Error saving keywords to session storage:', error);
   }
@@ -35,7 +37,14 @@ const saveKeywordsToSession = (keywords: Keyword[]) => {
 const getKeywordsFromSession = (): Keyword[] => {
   try {
     const storedKeywords = sessionStorage.getItem('monitor_keywords');
-    return storedKeywords ? JSON.parse(storedKeywords) : [];
+    if (!storedKeywords) return [];
+    
+    // Convert the array of strings back to Keyword objects with IDs
+    const keywordStrings: string[] = JSON.parse(storedKeywords);
+    return keywordStrings.map(text => ({
+      id: crypto.randomUUID(),
+      text
+    }));
   } catch (error) {
     console.error('Error retrieving keywords from session storage:', error);
     return [];

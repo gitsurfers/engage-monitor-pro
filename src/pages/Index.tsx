@@ -8,13 +8,11 @@ import { useFeed } from '@/hooks/useFeed';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [profile, setProfile] = useState(null);
-  const [isConnecting, setIsConnecting] = useState(false);
   const navigate = useNavigate();
   
   const { 
@@ -55,31 +53,6 @@ const Index = () => {
     return matchedKeyword ? matchedKeyword.text : undefined;
   };
 
-  // Call backend endpoint to start tweet stream
-  const startStream = async () => {
-    if (!profile) return;
-    
-    setIsConnecting(true);
-    try {
-      const res = await fetch('http://localhost:3000/start-stream', { credentials: 'include' });
-      const data = await res.json();
-      console.log('Stream started:', data);
-      toast({
-        title: "Stream started",
-        description: "You should now start receiving tweets"
-      });
-    } catch (error) {
-      console.error('Error starting stream:', error);
-      toast({
-        title: "Failed to start stream",
-        description: "Check your connection and try again",
-        variant: "destructive"
-      });
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -118,14 +91,6 @@ const Index = () => {
           <div className="mb-4 flex justify-between items-center">
             <h1 className="text-2xl font-bold">Social Media Feed</h1>
             <div className="flex items-center gap-4">
-              <Button 
-                onClick={startStream} 
-                disabled={isConnecting}
-                className="flex items-center gap-2"
-              >
-                {isConnecting && <Loader2 className="h-4 w-4 animate-spin" />}
-                Start Stream
-              </Button>
               <div className="text-sm text-muted-foreground">
                 {settings.keywords.length > 0 || settings.userIds.length > 0 ? (
                   <span>
