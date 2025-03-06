@@ -7,7 +7,6 @@ import { useMonitor } from '@/hooks/useMonitor';
 import { useFeed } from '@/hooks/useFeed';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from '@/components/ui/use-toast';
-import io, { Socket } from 'socket.io-client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -15,7 +14,6 @@ import { Loader2 } from 'lucide-react';
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [profile, setProfile] = useState(null);
-  const [tweets, setTweets] = useState([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const navigate = useNavigate();
   
@@ -46,58 +44,8 @@ const Index = () => {
       });
   }, [navigate]);
 
-  // Establish Socket.io connection once profile is loaded
-  useEffect(() => {
-    if (!profile) return;
-    
-    const socket: Socket = io('http://localhost:3000', { withCredentials: true });
-    
-    socket.on('connect', () => {
-      toast({
-        title: "Connected to stream",
-        description: "You'll now receive real-time Twitter updates",
-      });
-    });
-    
-    socket.on('tweet', (tweet) => {
-      setTweets((prev) => [tweet, ...prev]);
-      
-      // Convert Twitter API tweet to our app's post format
-      if (tweet.data?.text) {
-        const newPost = {
-          id: tweet.data.id || crypto.randomUUID(),
-          username: profile.username,
-          userDisplayName: profile.displayName,
-          userAvatar: profile.photos?.[0]?.value || '',
-          content: tweet.data.text,
-          timestamp: new Date(tweet.data.created_at || Date.now()),
-          likes: 0,
-          comments: 0,
-          shares: 0,
-          isLiked: false,
-          type: 'post' as const,  // This explicitly sets the type to a literal type
-          matchedKeyword: findMatchedKeyword(tweet.data.text, settings.keywords)
-        };
-        
-        addNewPost(newPost);
-      }
-    });
-    
-    socket.on('disconnect', () => {
-      toast({
-        title: "Disconnected from stream",
-        description: "Connection to Twitter stream was lost",
-        variant: "destructive"
-      });
-    });
-    
-    return () => {
-      socket.disconnect();
-    };
-  }, [profile, settings.keywords, addNewPost]);
-
   // Helper function to check if a tweet matches any monitored keywords
-  const findMatchedKeyword = (text, keywords) => {
+  const findMatchedKeyword = (text: string, keywords: Array<{text: string}>) => {
     if (!text || !keywords.length) return undefined;
     
     const matchedKeyword = keywords.find(k => 
@@ -216,8 +164,8 @@ const Index = () => {
               <h3 className="text-lg font-semibold mb-2">Account Stats</h3>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
-                  <p className="text-2xl font-bold">{tweets.length}</p>
-                  <p className="text-sm text-muted-foreground">Monitored Tweets</p>
+                  <p className="text-2xl font-bold">{posts.length}</p>
+                  <p className="text-sm text-muted-foreground">Monitored Posts</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{settings.keywords.length}</p>
@@ -229,8 +177,8 @@ const Index = () => {
             <div className="p-4 rounded-lg border border-border">
               <h3 className="text-lg font-semibold mb-2">Connection Status</h3>
               <div className="flex items-center">
-                <div className={`h-3 w-3 rounded-full mr-2 ${tweets.length > 0 ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                <p>{tweets.length > 0 ? 'Connected' : 'Ready to connect'}</p>
+                <div className={`h-3 w-3 rounded-full mr-2 ${posts.length > 0 ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                <p>{posts.length > 0 ? 'Connected' : 'Ready to connect'}</p>
               </div>
             </div>
           </div>

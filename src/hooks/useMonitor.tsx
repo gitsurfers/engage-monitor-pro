@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 
@@ -22,9 +23,28 @@ export type MonitorSettings = {
   };
 };
 
+// Helper functions for session storage
+const saveKeywordsToSession = (keywords: Keyword[]) => {
+  try {
+    sessionStorage.setItem('monitor_keywords', JSON.stringify(keywords));
+  } catch (error) {
+    console.error('Error saving keywords to session storage:', error);
+  }
+};
+
+const getKeywordsFromSession = (): Keyword[] => {
+  try {
+    const storedKeywords = sessionStorage.getItem('monitor_keywords');
+    return storedKeywords ? JSON.parse(storedKeywords) : [];
+  } catch (error) {
+    console.error('Error retrieving keywords from session storage:', error);
+    return [];
+  }
+};
+
 export function useMonitor() {
   const [settings, setSettings] = useState<MonitorSettings>({
-    keywords: [],
+    keywords: getKeywordsFromSession(),
     userIds: [],
     autoEngagement: {
       enabled: false,
@@ -56,6 +76,9 @@ export function useMonitor() {
           ...prev,
           keywords
         }));
+        
+        // Save to session storage
+        saveKeywordsToSession(keywords);
       } catch (error) {
         console.error('Error fetching keywords:', error);
         toast({
@@ -95,10 +118,16 @@ export function useMonitor() {
         throw new Error('Failed to add keyword');
       }
       
+      const newKeyword = { id: crypto.randomUUID(), text };
+      const updatedKeywords = [...settings.keywords, newKeyword];
+      
       setSettings(prev => ({
         ...prev,
-        keywords: [...prev.keywords, { id: crypto.randomUUID(), text }],
+        keywords: updatedKeywords,
       }));
+      
+      // Save to session storage
+      saveKeywordsToSession(updatedKeywords);
       
       toast({
         title: "Keyword added",
@@ -135,10 +164,15 @@ export function useMonitor() {
         throw new Error('Failed to remove keyword');
       }
       
+      const updatedKeywords = settings.keywords.filter(k => k.id !== id);
+      
       setSettings(prev => ({
         ...prev,
-        keywords: prev.keywords.filter(k => k.id !== id),
+        keywords: updatedKeywords,
       }));
+      
+      // Save to session storage
+      saveKeywordsToSession(updatedKeywords);
       
       toast({
         title: "Keyword removed",
