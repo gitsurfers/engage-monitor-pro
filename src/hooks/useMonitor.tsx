@@ -23,37 +23,43 @@ export type MonitorSettings = {
   };
 };
 
-// Helper functions for session storage
-const saveKeywordsToSession = (keywords: Keyword[]) => {
+// Helper functions for cookie storage
+const saveKeywordsToCookies = (keywords: Keyword[]) => {
   try {
     // Store just the array of strings
     const keywordStrings = keywords.map(k => k.text);
-    sessionStorage.setItem('monitor_keywords', JSON.stringify(keywordStrings));
+    document.cookie = `monitor_keywords=${JSON.stringify(keywordStrings)};path=/;max-age=86400`; // Expires in 1 day
   } catch (error) {
-    console.error('Error saving keywords to session storage:', error);
+    console.error('Error saving keywords to cookies:', error);
   }
 };
 
-const getKeywordsFromSession = (): Keyword[] => {
+const getKeywordsFromCookies = (): Keyword[] => {
   try {
-    const storedKeywords = sessionStorage.getItem('monitor_keywords');
-    if (!storedKeywords) return [];
+    const cookieValue = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('monitor_keywords='));
+    
+    if (!cookieValue) return [];
+    
+    // Extract the value part
+    const keywordsJson = cookieValue.split('=')[1];
     
     // Convert the array of strings back to Keyword objects with IDs
-    const keywordStrings: string[] = JSON.parse(storedKeywords);
+    const keywordStrings: string[] = JSON.parse(keywordsJson);
     return keywordStrings.map(text => ({
       id: crypto.randomUUID(),
       text
     }));
   } catch (error) {
-    console.error('Error retrieving keywords from session storage:', error);
+    console.error('Error retrieving keywords from cookies:', error);
     return [];
   }
 };
 
 export function useMonitor() {
   const [settings, setSettings] = useState<MonitorSettings>({
-    keywords: getKeywordsFromSession(),
+    keywords: getKeywordsFromCookies(),
     userIds: [],
     autoEngagement: {
       enabled: false,
@@ -86,8 +92,8 @@ export function useMonitor() {
           keywords
         }));
         
-        // Save to session storage
-        saveKeywordsToSession(keywords);
+        // Save to cookies
+        saveKeywordsToCookies(keywords);
       } catch (error) {
         console.error('Error fetching keywords:', error);
         toast({
@@ -135,8 +141,8 @@ export function useMonitor() {
         keywords: updatedKeywords,
       }));
       
-      // Save to session storage
-      saveKeywordsToSession(updatedKeywords);
+      // Save to cookies
+      saveKeywordsToCookies(updatedKeywords);
       
       toast({
         title: "Keyword added",
@@ -180,8 +186,8 @@ export function useMonitor() {
         keywords: updatedKeywords,
       }));
       
-      // Save to session storage
-      saveKeywordsToSession(updatedKeywords);
+      // Save to cookies
+      saveKeywordsToCookies(updatedKeywords);
       
       toast({
         title: "Keyword removed",
