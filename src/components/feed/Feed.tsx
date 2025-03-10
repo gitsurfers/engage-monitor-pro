@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { CustomCard } from '@/components/ui/CustomCard';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Heart, Share2, Eye, Play } from 'lucide-react';
+import { MessageSquare, Heart, Share2, Eye, Play, ExternalLink } from 'lucide-react';
 import { Post } from '@/hooks/useFeed';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -56,7 +55,6 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
     const comment = commentInputs[postId];
     if (comment && comment.trim()) {
       onComment(postId, comment);
-      // Clear the input
       setCommentInputs(prev => ({
         ...prev,
         [postId]: ''
@@ -85,18 +83,24 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
         }
       }
     } else {
-      // Pause the currently playing video if any
       if (playingVideo && videoRefs.current[playingVideo]) {
         videoRefs.current[playingVideo]?.pause();
       }
       
-      // Play the new video
       setPlayingVideo(postId);
       const videoElement = videoRefs.current[postId];
       if (videoElement) {
         videoElement.play();
       }
     }
+  };
+
+  const openTwitterPost = (username: string, tweetId: string) => {
+    window.open(`https://x.com/${username}/status/${tweetId}`, '_blank');
+  };
+
+  const openTwitterProfile = (username: string) => {
+    window.open(`https://x.com/${username}`, '_blank');
   };
 
   if (isLoading) {
@@ -143,16 +147,25 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
           <CustomCard 
             key={post.id} 
             highlight={!!post.matchedKeyword || !!post.matchedUserId}
-            isNew={Date.now() - post.timestamp.getTime() < 60000} // Less than a minute old
+            isNew={Date.now() - post.timestamp.getTime() < 60000}
           >
             <div className="flex items-start space-x-3 mb-3">
-              <Avatar className="h-10 w-10 border">
+              <Avatar 
+                className="h-10 w-10 border cursor-pointer" 
+                onClick={() => openTwitterProfile(post.username)}
+              >
                 <AvatarImage src={post.userAvatar} alt={post.userDisplayName} />
                 <AvatarFallback>{post.userDisplayName.charAt(0)}</AvatarFallback>
               </Avatar>
-              <div>
+              <div className="flex-1">
                 <div className="flex items-center space-x-2">
-                  <p className="font-semibold">{post.userDisplayName}</p>
+                  <p 
+                    className="font-semibold hover:underline cursor-pointer flex items-center gap-1"
+                    onClick={() => openTwitterProfile(post.username)}
+                  >
+                    {post.userDisplayName}
+                    <ExternalLink className="h-3 w-3" />
+                  </p>
                   <p className="text-sm text-muted-foreground">@{post.username}</p>
                   <p className="text-xs text-muted-foreground">· {formatTimestamp(post.timestamp)}</p>
                 </div>
@@ -173,56 +186,64 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
               </div>
             </div>
             
-            <p className="mb-3 text-sm leading-relaxed">{post.content}</p>
-            
-            {post.post_type === 'image' && post.media_url && (
-              <div className="mb-3 rounded-lg overflow-hidden">
-                <img 
-                  src={post.media_url} 
-                  alt="Post image" 
-                  className="w-full max-h-[350px] object-contain bg-black/5"
-                  loading="lazy"
-                />
-              </div>
-            )}
-            
-            {post.post_type === 'video' && post.media_url && (
-              <div className="mb-3 rounded-lg overflow-hidden">
-                <div 
-                  className="relative aspect-video max-h-[300px] bg-black flex items-center justify-center cursor-pointer"
-                  onClick={() => handlePlayVideo(post.tweet_id)}
-                >
-                  <video
-                    ref={ref => videoRefs.current[post.tweet_id] = ref}
-                    src=""
-                    poster={post.media_url}
-                    className="max-h-[300px] w-auto mx-auto"
-                    preload="metadata"
+            <div 
+              className="mb-3 cursor-pointer" 
+              onClick={() => openTwitterPost(post.username, post.tweet_id)}
+            >
+              <p className="text-sm leading-relaxed mb-3">{post.content}</p>
+              
+              {post.post_type === 'image' && post.media_url && (
+                <div className="rounded-lg overflow-hidden">
+                  <img 
+                    src={post.media_url} 
+                    alt="Post image" 
+                    className="w-full max-h-[350px] object-contain bg-black/5"
+                    loading="lazy"
                   />
-                  {(!playingVideo || playingVideo !== post.tweet_id) && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="h-10 w-10 rounded-full bg-primary/80 text-white flex items-center justify-center">
-                        <Play className="h-5 w-5 fill-current" />
-                      </div>
-                    </div>
-                  )}
-                  {post.duration_millis && (
-                    <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1 rounded">
-                      {formatVideoDuration(post.duration_millis)}
-                    </div>
-                  )}
                 </div>
-              </div>
-            )}
+              )}
+              
+              {post.post_type === 'video' && post.media_url && (
+                <div className="rounded-lg overflow-hidden">
+                  <div 
+                    className="relative aspect-video max-h-[300px] bg-black flex items-center justify-center cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlayVideo(post.tweet_id);
+                    }}
+                  >
+                    <video
+                      ref={ref => videoRefs.current[post.tweet_id] = ref}
+                      src=""
+                      poster={post.media_url}
+                      className="max-h-[300px] w-auto mx-auto"
+                      preload="metadata"
+                    />
+                    {(!playingVideo || playingVideo !== post.tweet_id) && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-10 w-10 rounded-full bg-primary/80 text-white flex items-center justify-center">
+                          <Play className="h-5 w-5 fill-current" />
+                        </div>
+                      </div>
+                    )}
+                    {post.duration_millis && (
+                      <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1 rounded">
+                        {formatVideoDuration(post.duration_millis)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             
             <div className="flex justify-between items-center">
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center space-x-1 text-muted-foreground"
+                className={`flex items-center space-x-1 ${post.commented ? 'text-primary' : 'text-muted-foreground'}`}
                 onClick={() => toggleCommentSection(post.tweet_id)}
               >
-                <MessageSquare className="h-4 w-4" />
+                <MessageSquare className={`h-4 w-4 ${post.commented ? 'fill-primary/20' : ''}`} />
                 <span>{post.comments}</span>
               </Button>
               
@@ -240,6 +261,7 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
                 variant="ghost"
                 size="sm"
                 className="flex items-center space-x-1 text-muted-foreground"
+                onClick={() => openTwitterPost(post.username, post.tweet_id)}
               >
                 <Share2 className="h-4 w-4" />
                 <span>{post.shares}</span>
