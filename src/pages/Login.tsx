@@ -12,27 +12,33 @@ const Login = () => {
 
   return (
     <div className="h-screen flex items-center justify-center bg-background p-4">
-      <CustomCard className="max-w-md w-full p-8">
+      <CustomCard className="max-w-md w-full p-6 md:p-8">
         <div className="space-y-6 text-center">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+              <Twitter className="h-8 w-8 text-white" />
+            </div>
+          </div>
+          
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold">Social Media Monitor</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl md:text-3xl font-bold">Social Media Monitor</h1>
+            <p className="text-sm text-muted-foreground">
               Connect with Twitter to start monitoring your social media feeds
             </p>
           </div>
           
-          <div className="flex justify-center">
+          <div className="flex justify-center pt-2">
             <Button 
               onClick={handleLogin} 
               size="lg" 
               className="bg-[#1DA1F2] hover:bg-[#1a8cd8] w-full max-w-xs"
             >
-              <Twitter className="mr-2 h-5 w-5" />
+              <Twitter className="mr-2 h-4 w-4" />
               Login with Twitter
             </Button>
           </div>
           
-          <div className="text-sm text-muted-foreground">
+          <div className="text-xs text-muted-foreground mt-4">
             <p>This will redirect you to Twitter for authentication.</p>
             <p>No passwords are stored by this application.</p>
           </div>
