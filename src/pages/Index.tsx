@@ -24,7 +24,7 @@ const Index = () => {
     updateAutoEngagement 
   } = useMonitor();
   
-  const { posts, isLoading, toggleLike, addComment, addNewPost } = useFeed(settings);
+  const { posts, isLoading, toggleLike, addComment } = useFeed(settings);
 
   // Fetch profile data from backend
   useEffect(() => {
@@ -41,17 +41,6 @@ const Index = () => {
         navigate('/login', { replace: true });
       });
   }, [navigate]);
-
-  // Helper function to check if a tweet matches any monitored keywords
-  const findMatchedKeyword = (text: string, keywords: Array<{text: string}>) => {
-    if (!text || !keywords.length) return undefined;
-    
-    const matchedKeyword = keywords.find(k => 
-      text.toLowerCase().includes(k.text.toLowerCase())
-    );
-    
-    return matchedKeyword ? matchedKeyword.text : undefined;
-  };
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -89,7 +78,7 @@ const Index = () => {
       <div className="flex-1 overflow-hidden">
         <div className="h-full p-4">
           <div className="mb-4 flex justify-between items-center">
-            <h1 className="text-2xl font-bold">Social Media Feed</h1>
+            <h1 className="text-2xl font-bold">Twitter Feed</h1>
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 {settings.keywords.length > 0 || settings.userIds.length > 0 ? (

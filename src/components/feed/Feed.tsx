@@ -1,12 +1,11 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CustomCard } from '@/components/ui/CustomCard';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Heart, Share2, Eye } from 'lucide-react';
+import { MessageSquare, Heart, Share2, Eye, Play } from 'lucide-react';
 import { Post } from '@/hooks/useFeed';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -21,6 +20,8 @@ interface FeedProps {
 export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
 
   const formatTimestamp = (date: Date) => {
     const now = new Date();
@@ -59,6 +60,41 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
         ...prev,
         [postId]: ''
       }));
+    }
+  };
+
+  const formatVideoDuration = (milliseconds: number) => {
+    if (!milliseconds) return '00:00';
+    
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handlePlayVideo = (postId: string) => {
+    if (playingVideo === postId) {
+      const videoElement = videoRefs.current[postId];
+      if (videoElement) {
+        if (videoElement.paused) {
+          videoElement.play();
+        } else {
+          videoElement.pause();
+        }
+      }
+    } else {
+      // Pause the currently playing video if any
+      if (playingVideo && videoRefs.current[playingVideo]) {
+        videoRefs.current[playingVideo]?.pause();
+      }
+      
+      // Play the new video
+      setPlayingVideo(postId);
+      const videoElement = videoRefs.current[postId];
+      if (videoElement) {
+        videoElement.play();
+      }
     }
   };
 
@@ -138,12 +174,52 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
             
             <p className="mb-4 text-sm leading-relaxed">{post.content}</p>
             
+            {post.post_type === 'image' && post.media_url && (
+              <div className="mb-4 rounded-lg overflow-hidden">
+                <img 
+                  src={post.media_url} 
+                  alt="Post image" 
+                  className="w-full h-auto object-cover"
+                  loading="lazy"
+                />
+              </div>
+            )}
+            
+            {post.post_type === 'video' && post.media_url && (
+              <div className="mb-4 rounded-lg overflow-hidden relative">
+                <div 
+                  className="relative aspect-video bg-black flex items-center justify-center cursor-pointer"
+                  onClick={() => handlePlayVideo(post.tweet_id)}
+                >
+                  <video
+                    ref={ref => videoRefs.current[post.tweet_id] = ref}
+                    src=""
+                    poster={post.media_url}
+                    className="w-full h-auto"
+                    preload="metadata"
+                  />
+                  {(!playingVideo || playingVideo !== post.tweet_id) && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="h-12 w-12 rounded-full bg-primary/80 text-white flex items-center justify-center">
+                        <Play className="h-6 w-6 fill-current" />
+                      </div>
+                    </div>
+                  )}
+                  {post.duration_millis && (
+                    <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1 rounded">
+                      {formatVideoDuration(post.duration_millis)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
             <div className="flex justify-between items-center">
               <Button
                 variant="ghost"
                 size="sm"
                 className="flex items-center space-x-1 text-muted-foreground"
-                onClick={() => toggleCommentSection(post.id)}
+                onClick={() => toggleCommentSection(post.tweet_id)}
               >
                 <MessageSquare className="h-4 w-4" />
                 <span>{post.comments}</span>
@@ -153,7 +229,7 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
                 variant="ghost"
                 size="sm"
                 className={`flex items-center space-x-1 ${post.isLiked ? 'text-red-500' : 'text-muted-foreground'}`}
-                onClick={() => onLike(post.id)}
+                onClick={() => onLike(post.tweet_id)}
               >
                 <Heart className={`h-4 w-4 ${post.isLiked ? 'fill-current' : ''}`} />
                 <span>{post.likes}</span>
@@ -174,28 +250,41 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
                 className="flex items-center space-x-1 text-muted-foreground"
               >
                 <Eye className="h-4 w-4" />
-                <span>Details</span>
+                <span>{post.views}</span>
               </Button>
             </div>
             
-            {expandedComments[post.id] && (
+            {(expandedComments[post.tweet_id] || post.commented) && (
               <div className="mt-4 space-y-3">
                 <Separator />
+                
+                {post.commented && post.comment && (
+                  <div className="flex space-x-2 pt-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 bg-secondary/20 p-2 rounded-lg">
+                      <p className="text-sm font-medium">You</p>
+                      <p className="text-sm">{post.comment}</p>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex space-x-2">
                   <Input
                     placeholder="Add a comment..."
-                    value={commentInputs[post.id] || ''}
-                    onChange={(e) => handleCommentChange(post.id, e.target.value)}
+                    value={commentInputs[post.tweet_id] || ''}
+                    onChange={(e) => handleCommentChange(post.tweet_id, e.target.value)}
                     className="flex-1"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        handleSubmitComment(post.id);
+                        handleSubmitComment(post.tweet_id);
                       }
                     }}
                   />
                   <Button 
-                    onClick={() => handleSubmitComment(post.id)}
-                    disabled={!commentInputs[post.id]?.trim()}
+                    onClick={() => handleSubmitComment(post.tweet_id)}
+                    disabled={!commentInputs[post.tweet_id]?.trim()}
                   >
                     Post
                   </Button>
