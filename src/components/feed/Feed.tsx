@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { CustomCard } from '@/components/ui/CustomCard';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -253,7 +254,7 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
                 className={`flex items-center space-x-1 ${post.isLiked ? 'text-red-500' : 'text-muted-foreground'}`}
                 onClick={() => onLike(post.tweet_id)}
               >
-                <Heart className={`h-4 w-4 ${post.isLiked ? 'fill-current' : ''}`} />
+                <Heart className={`h-4 w-4 ${post.isLiked ? 'fill-red-500' : ''}`} />
                 <span>{post.likes}</span>
               </Button>
               
@@ -277,11 +278,12 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
               </Button>
             </div>
             
-            {(expandedComments[post.tweet_id] || post.commented) && (
+            {/* Always show comment section if there's a comment */}
+            {(expandedComments[post.tweet_id] || (post.comment && post.comment.trim() !== '')) && (
               <div className="mt-4 space-y-3">
                 <Separator />
                 
-                {post.commented && post.comment && (
+                {post.comment && post.comment.trim() !== '' && (
                   <div className="flex space-x-2 pt-2">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback>U</AvatarFallback>
