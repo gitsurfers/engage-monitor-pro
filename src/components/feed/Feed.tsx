@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { CustomCard } from '@/components/ui/CustomCard';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -172,36 +173,36 @@ export function Feed({ posts, isLoading, onLike, onComment }: FeedProps) {
               </div>
             </div>
             
-            <p className="mb-4 text-sm leading-relaxed">{post.content}</p>
+            <p className="mb-3 text-sm leading-relaxed">{post.content}</p>
             
             {post.post_type === 'image' && post.media_url && (
-              <div className="mb-4 rounded-lg overflow-hidden">
+              <div className="mb-3 rounded-lg overflow-hidden">
                 <img 
                   src={post.media_url} 
                   alt="Post image" 
-                  className="w-full h-auto object-cover"
+                  className="w-full max-h-[350px] object-contain bg-black/5"
                   loading="lazy"
                 />
               </div>
             )}
             
             {post.post_type === 'video' && post.media_url && (
-              <div className="mb-4 rounded-lg overflow-hidden relative">
+              <div className="mb-3 rounded-lg overflow-hidden">
                 <div 
-                  className="relative aspect-video bg-black flex items-center justify-center cursor-pointer"
+                  className="relative aspect-video max-h-[300px] bg-black flex items-center justify-center cursor-pointer"
                   onClick={() => handlePlayVideo(post.tweet_id)}
                 >
                   <video
                     ref={ref => videoRefs.current[post.tweet_id] = ref}
                     src=""
                     poster={post.media_url}
-                    className="w-full h-auto"
+                    className="max-h-[300px] w-auto mx-auto"
                     preload="metadata"
                   />
                   {(!playingVideo || playingVideo !== post.tweet_id) && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="h-12 w-12 rounded-full bg-primary/80 text-white flex items-center justify-center">
-                        <Play className="h-6 w-6 fill-current" />
+                      <div className="h-10 w-10 rounded-full bg-primary/80 text-white flex items-center justify-center">
+                        <Play className="h-5 w-5 fill-current" />
                       </div>
                     </div>
                   )}
