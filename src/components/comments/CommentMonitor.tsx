@@ -140,13 +140,13 @@ export function CommentMonitor({
               {comments.map((comment) => (
                 <div 
                   key={comment.id}
-                  className={`group flex items-center justify-between p-2 rounded-md hover:bg-accent/30 transition-colors ${!comment.is_active ? 'opacity-70' : ''}`}
+                  className={`group flex items-start justify-between p-2 rounded-md hover:bg-accent/30 transition-colors ${!comment.is_active ? 'opacity-70' : ''}`}
                 >
-                  <div className="flex-1 mr-2">
-                    <p className="text-sm font-medium line-clamp-1">{comment.comment_text}</p>
+                  <div className="flex-1 mr-2 overflow-hidden">
+                    <p className="text-sm font-medium line-clamp-2 break-words">{comment.comment_text}</p>
                   </div>
                   
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 shrink-0">
                     <div className="flex items-center space-x-1.5 min-w-[60px]">
                       <Switch
                         checked={comment.is_active}

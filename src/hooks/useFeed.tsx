@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { MonitorSettings } from './useMonitor';
 
 export type Post = {
@@ -27,6 +27,7 @@ export type Post = {
 export function useFeed(settings: MonitorSettings) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Add a new post to the feed
   const addNewPost = (post: Post) => {
@@ -77,56 +78,57 @@ export function useFeed(settings: MonitorSettings) {
   };
 
   // Fetch posts from the API
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch('http://localhost:3000/twitter/get-all-twitter-posts', {
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch posts');
-        }
-        
-        const result = await response.json();
-        
-        if (result.data && Array.isArray(result.data)) {
-          const formattedPosts: Post[] = result.data.map(post => ({
-            id: post.id,
-            tweet_id: post.tweet_id,
-            username: post.screen_name,
-            userDisplayName: post.name,
-            userAvatar: post.profile_image_url,
-            content: post.tweet_text,
-            timestamp: new Date(post.created_at),
-            likes: post.bookmark_count,
-            comments: post.reply_count,
-            shares: post.retweet_count,
-            views: post.views,
-            isLiked: post.liked,
-            media_url: post.media_url,
-            duration_millis: post.duration_millis,
-            post_type: post.post_type,
-            commented: post.commented,
-            comment: post.comment,
-            matchedKeyword: findMatchedKeyword(post.tweet_text, settings.keywords),
-            matchedUserId: settings.userIds.some(u => u.username.toLowerCase() === post.screen_name.toLowerCase()) 
-              ? post.screen_name 
-              : undefined
-          }));
-          
-          setPosts(formattedPosts);
-        }
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchPosts = useCallback(async () => {
+    if (isLoading) {
+      // If already loading, don't trigger another fetch
+      return;
+    }
     
-    fetchPosts();
-  }, [settings]);
+    setIsLoading(true);
+    try {
+      const response = await fetch('http://localhost:3000/twitter/get-all-twitter-posts', {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch posts');
+      }
+      
+      const result = await response.json();
+      
+      if (result.data && Array.isArray(result.data)) {
+        const formattedPosts: Post[] = result.data.map(post => ({
+          id: post.id,
+          tweet_id: post.tweet_id,
+          username: post.screen_name,
+          userDisplayName: post.name,
+          userAvatar: post.profile_image_url,
+          content: post.tweet_text,
+          timestamp: new Date(post.created_at),
+          likes: post.bookmark_count,
+          comments: post.reply_count,
+          shares: post.retweet_count,
+          views: post.views,
+          isLiked: post.liked,
+          media_url: post.media_url,
+          duration_millis: post.duration_millis,
+          post_type: post.post_type,
+          commented: post.commented,
+          comment: post.comment,
+          matchedKeyword: findMatchedKeyword(post.tweet_text, settings.keywords),
+          matchedUserId: settings.userIds.some(u => u.username.toLowerCase() === post.screen_name.toLowerCase()) 
+            ? post.screen_name 
+            : undefined
+        }));
+        
+        setPosts(formattedPosts);
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [settings, isLoading]);
 
   // Helper function to check if a tweet matches any monitored keywords
   const findMatchedKeyword = (text: string, keywords: Array<{text: string}>) => {
@@ -138,12 +140,32 @@ export function useFeed(settings: MonitorSettings) {
     
     return matchedKeyword ? matchedKeyword.text : undefined;
   };
+  
+  // Set up automatic refresh
+  useEffect(() => {
+    // Initial fetch
+    fetchPosts();
+    
+    // Set up interval for refreshing posts every 20 seconds
+    refreshIntervalRef.current = setInterval(() => {
+      console.log('Auto-refreshing posts...');
+      fetchPosts();
+    }, 20000);
+    
+    // Cleanup on unmount
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [fetchPosts]);
 
   return {
     posts,
     isLoading,
     addNewPost,
     toggleLike,
-    addComment
+    addComment,
+    refreshPosts: fetchPosts
   };
 }
