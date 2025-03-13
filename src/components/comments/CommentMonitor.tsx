@@ -152,7 +152,6 @@ export function CommentMonitor({
                         checked={comment.is_active}
                         onCheckedChange={() => handleToggleStatus(comment.id, comment.is_active)}
                         disabled={actionInProgress === comment.id}
-                        size="sm"
                       />
                       <Label className="text-xs">
                         {comment.is_active ? 'Active' : 'Inactive'}
