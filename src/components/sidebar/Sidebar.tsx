@@ -1,13 +1,15 @@
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Hash, User, Settings, LogOut } from 'lucide-react';
+import { ChevronDown, ChevronRight, Hash, User, Settings, LogOut, MessageSquare } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { KeywordMonitor } from '@/components/keywords/KeywordMonitor';
 import { UserMonitor } from '@/components/users/UserMonitor';
+import { CommentMonitor } from '@/components/comments/CommentMonitor';
 import { EngagementSettings } from '@/components/engagement/EngagementSettings';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { MonitorSettings } from '@/hooks/useMonitor';
+import type { Comment } from '@/components/comments/CommentMonitor';
 
 interface SidebarProps {
   settings: MonitorSettings;
@@ -16,6 +18,11 @@ interface SidebarProps {
   onAddUserId: (userId: string) => void;
   onRemoveUserId: (id: string) => void;
   onUpdateAutoEngagement: (settings: Partial<MonitorSettings['autoEngagement']>) => void;
+  comments: Comment[];
+  onAddComment: (comment: string) => Promise<void>;
+  onDeleteComment: (id: number) => Promise<void>;
+  onToggleCommentStatus: (id: number, isActive: boolean) => Promise<void>;
+  isLoadingComments: boolean;
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
   profile: any; // Twitter profile data
@@ -28,6 +35,11 @@ export function Sidebar({
   onAddUserId,
   onRemoveUserId,
   onUpdateAutoEngagement,
+  comments,
+  onAddComment,
+  onDeleteComment,
+  onToggleCommentStatus,
+  isLoadingComments,
   isSidebarOpen,
   toggleSidebar,
   profile
@@ -60,6 +72,9 @@ export function Sidebar({
           </Button>
           <Button variant="ghost" size="icon">
             <User className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <MessageSquare className="h-5 w-5" />
           </Button>
           <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />
@@ -157,6 +172,37 @@ export function Sidebar({
                 userIds={settings.userIds}
                 onAddUserId={onAddUserId}
                 onRemoveUserId={onRemoveUserId}
+              />
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible
+            open={openSection === 'comments'}
+            onOpenChange={() => toggleSection('comments')}
+          >
+            <CollapsibleTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start p-2.5 font-medium"
+              >
+                <div className="flex items-center">
+                  {openSection === 'comments' ? (
+                    <ChevronDown className="h-5 w-5 mr-2" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 mr-2" />
+                  )}
+                  <MessageSquare className="h-5 w-5 mr-2" />
+                  <span>Comments</span>
+                </div>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2 pb-4 px-2">
+              <CommentMonitor 
+                comments={comments}
+                onAddComment={onAddComment}
+                onDeleteComment={onDeleteComment}
+                onToggleCommentStatus={onToggleCommentStatus}
+                isLoading={isLoadingComments}
               />
             </CollapsibleContent>
           </Collapsible>

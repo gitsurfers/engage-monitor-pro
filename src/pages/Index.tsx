@@ -5,8 +5,9 @@ import { Sidebar } from '@/components/sidebar/Sidebar';
 import { Feed } from '@/components/feed/Feed';
 import { useMonitor } from '@/hooks/useMonitor';
 import { useFeed } from '@/hooks/useFeed';
+import { useComments } from '@/hooks/useComments';
 import { Toaster } from '@/components/ui/sonner';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2 } from 'lucide-react';
 
@@ -24,7 +25,15 @@ const Index = () => {
     updateAutoEngagement 
   } = useMonitor();
   
-  const { posts, isLoading, toggleLike, addComment } = useFeed(settings);
+  const {
+    comments,
+    isLoading: isLoadingComments,
+    addComment,
+    deleteComment,
+    toggleCommentStatus
+  } = useComments();
+  
+  const { posts, isLoading, toggleLike, addComment: postComment } = useFeed(settings);
 
   // Fetch profile data from backend
   useEffect(() => {
@@ -69,6 +78,11 @@ const Index = () => {
         onAddUserId={addUserId}
         onRemoveUserId={removeUserId}
         onUpdateAutoEngagement={updateAutoEngagement}
+        comments={comments}
+        onAddComment={addComment}
+        onDeleteComment={deleteComment}
+        onToggleCommentStatus={toggleCommentStatus}
+        isLoadingComments={isLoadingComments}
         isSidebarOpen={isSidebarOpen}
         toggleSidebar={toggleSidebar}
         profile={profile}
@@ -96,7 +110,7 @@ const Index = () => {
             posts={posts}
             isLoading={isLoading}
             onLike={toggleLike}
-            onComment={addComment}
+            onComment={postComment}
           />
         </div>
       </div>
@@ -116,7 +130,7 @@ const Index = () => {
           <div className="w-full space-y-6">
             <div className="p-4 rounded-lg border border-border">
               <h3 className="text-lg font-semibold mb-2">Account Stats</h3>
-              <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-2xl font-bold">{posts.length}</p>
                   <p className="text-sm text-muted-foreground">Monitored Posts</p>
@@ -124,6 +138,10 @@ const Index = () => {
                 <div>
                   <p className="text-2xl font-bold">{settings.keywords.length}</p>
                   <p className="text-sm text-muted-foreground">Keywords</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{comments.length}</p>
+                  <p className="text-sm text-muted-foreground">Comments</p>
                 </div>
               </div>
             </div>
