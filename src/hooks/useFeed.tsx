@@ -1,6 +1,6 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MonitorSettings } from './useMonitor';
+import { toast } from 'sonner';
 
 export type Post = {
   id: string;
@@ -27,7 +27,9 @@ export type Post = {
 export function useFeed(settings: MonitorSettings) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
   // Add a new post to the feed
   const addNewPost = (post: Post) => {
@@ -77,59 +79,6 @@ export function useFeed(settings: MonitorSettings) {
     }
   };
 
-  // Fetch posts from the API
-  const fetchPosts = useCallback(async () => {
-    if (isLoading) {
-      // If already loading, don't trigger another fetch
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      const response = await fetch('http://localhost:3000/twitter/get-all-twitter-posts', {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch posts');
-      }
-      
-      const result = await response.json();
-      
-      if (result.data && Array.isArray(result.data)) {
-        const formattedPosts: Post[] = result.data.map(post => ({
-          id: post.id,
-          tweet_id: post.tweet_id,
-          username: post.screen_name,
-          userDisplayName: post.name,
-          userAvatar: post.profile_image_url,
-          content: post.tweet_text,
-          timestamp: new Date(post.created_at),
-          likes: post.bookmark_count,
-          comments: post.reply_count,
-          shares: post.retweet_count,
-          views: post.views,
-          isLiked: post.liked,
-          media_url: post.media_url,
-          duration_millis: post.duration_millis,
-          post_type: post.post_type,
-          commented: post.commented,
-          comment: post.comment,
-          matchedKeyword: findMatchedKeyword(post.tweet_text, settings.keywords),
-          matchedUserId: settings.userIds.some(u => u.username.toLowerCase() === post.screen_name.toLowerCase()) 
-            ? post.screen_name 
-            : undefined
-        }));
-        
-        setPosts(formattedPosts);
-      }
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [settings, isLoading]);
-
   // Helper function to check if a tweet matches any monitored keywords
   const findMatchedKeyword = (text: string, keywords: Array<{text: string}>) => {
     if (!text || !keywords.length) return undefined;
@@ -140,22 +89,115 @@ export function useFeed(settings: MonitorSettings) {
     
     return matchedKeyword ? matchedKeyword.text : undefined;
   };
+
+  // Fetch posts from the API
+  const fetchPosts = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    
+    // Don't set loading state for background refreshes if we already have posts
+    const isInitialLoad = posts.length === 0;
+    if (isInitialLoad) {
+      setIsLoading(true);
+    }
+    
+    setError(null);
+    
+    try {
+      const response = await fetch('http://localhost:3000/twitter/get-all-twitter-posts', {
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch posts, server response:', errorText);
+        throw new Error(`Failed to fetch posts: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Fetched posts result:', result);
+      
+      if (result.data && Array.isArray(result.data)) {
+        const formattedPosts: Post[] = result.data.map(post => ({
+          id: post.id,
+          tweet_id: post.tweet_id,
+          username: post.screen_name,
+          userDisplayName: post.name,
+          userAvatar: post.profile_image_url,
+          content: post.tweet_text,
+          timestamp: new Date(post.created_at),
+          likes: post.bookmark_count || 0,
+          comments: post.reply_count || 0,
+          shares: post.retweet_count || 0,
+          views: post.views || 0,
+          isLiked: post.liked || false,
+          media_url: post.media_url,
+          duration_millis: post.duration_millis,
+          post_type: post.post_type || 'text',
+          commented: post.commented || false,
+          comment: post.comment,
+          matchedKeyword: findMatchedKeyword(post.tweet_text, settings.keywords),
+          matchedUserId: settings.userIds.some(u => u.username.toLowerCase() === post.screen_name?.toLowerCase()) 
+            ? post.screen_name 
+            : undefined
+        }));
+        
+        if (isMountedRef.current) {
+          setPosts(formattedPosts);
+          if (formattedPosts.length > 0) {
+            toast.success(`Loaded ${formattedPosts.length} posts`);
+          }
+        }
+      } else {
+        console.warn('Unexpected API response format:', result);
+        if (isMountedRef.current && posts.length === 0) {
+          // Only set empty posts if we don't have any yet (to prevent flickering)
+          setPosts([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      setError((error as Error).message || 'Failed to fetch posts');
+      
+      // If this is an initial load with no posts, show a mock post for debugging
+      if (isInitialLoad && isMountedRef.current) {
+        // Keep existing posts if any instead of showing empty state
+        if (posts.length === 0) {
+          toast.error('Error loading posts. Please check your connection and try again.');
+        }
+      }
+    } finally {
+      if (isMountedRef.current && isInitialLoad) {
+        setIsLoading(false);
+      }
+    }
+  }, [posts.length, settings]);
   
   // Set up automatic refresh
   useEffect(() => {
+    isMountedRef.current = true;
+    
     // Initial fetch
     fetchPosts();
     
     // Set up interval for refreshing posts every 20 seconds
     refreshIntervalRef.current = setInterval(() => {
       console.log('Auto-refreshing posts...');
-      fetchPosts();
+      if (isMountedRef.current) {
+        fetchPosts();
+      }
     }, 20000);
     
     // Cleanup on unmount
     return () => {
+      isMountedRef.current = false;
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
       }
     };
   }, [fetchPosts]);
@@ -163,6 +205,7 @@ export function useFeed(settings: MonitorSettings) {
   return {
     posts,
     isLoading,
+    error,
     addNewPost,
     toggleLike,
     addComment,
